@@ -1,0 +1,50 @@
+#!/bin/bash
+
+HTML=$(ls -A /var/www/html)
+UNUMBER="$UNUM"
+GNUMBER="$GNUM"
+
+
+if [ "$UNUMBER" != "" ];then
+	UNAME=$(getent passwd $UNUMBER | cut -d: -f1)
+fi
+
+
+if [ "$GNUMBER" != "" ];then
+	GNAME=$(cat /etc/group |grep ":$GNUMBER:" |cut -d ":" -f1)
+fi
+
+
+#Probando los id de usuario
+if [ "$UNAME" = "" ];then
+	UNAME=nsctl
+	usermod -u $UNUMBER nsctl 
+fi
+
+if [ "$GNAME" = "" ];then
+	GNAME=nsctl
+	groupmod -g $GNUMBER nsctl
+fi
+
+
+if [ "$HTML" = "" ];then
+
+	unzip /opt/master.zip -d /tmp/
+	mv /tmp/KodExplorer-master/* /var/www/html/	
+	rm -rf /tmp/*
+
+fi
+
+
+#Reparo Permisos
+chown -R $UNAME.$GNAME /var/www/html
+chown -R $UNAME.$GNAME /etc/apache2
+chown -R $UNAME.$GNAME /var/log/apache2
+chmod -R 777 /var/www/html
+
+
+sed -i "s/APACHE_RUN_USER=www-data/APACHE_RUN_USER=$UNAME/g" /etc/apache2/envvars; \
+sed -i "s/APACHE_RUN_GROUP=www-data/APACHE_RUN_GROUP=$GNAME/g" /etc/apache2/envvars; \
+
+#Ejecuto apache 
+exec /usr/sbin/apachectl -D FOREGROUND
